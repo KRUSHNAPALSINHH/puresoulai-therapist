@@ -66,51 +66,64 @@ const LoginPage = () => {
     setErrors(newErrors);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrors({});
-    setSuccessMessage('');
-    
-    try {
-      if (isLogin) {
-        // Login
-        const user = await authenticateUser(identifier, password);
-        const token = generateSessionToken(user);
-        
-        // Store token in localStorage
-        localStorage.setItem('authToken', token);
-        
-        setUser(user);
-        setSuccessMessage('Login successful!');
-        
-        setTimeout(() => {
-          navigate('/welcome');
-        }, 1000);
-      } else {
-        // Registration
-        const user = await createUser({
-          username,
-          email,
-          name,
-          password
-        });
-        
-        setSuccessMessage('Account created successfully! Please login.');
-        
-        // Switch to login mode after successful registration
-        setTimeout(() => {
-          setIsLogin(true);
-          setIdentifier(username);
-          setPassword('');
-        }, 2000);
+// In LoginPage.jsx
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setErrors({});
+  setSuccessMessage('');
+  
+  try {
+    if (isLogin) {
+      // --- LOGIN API CALL ---
+      const response = await fetch('http://localhost:3001/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed.');
       }
-    } catch (error) {
-      setErrors({ general: error.message });
-    } finally {
-      setIsLoading(false);
+      
+      localStorage.setItem('authToken', data.token);
+      setUser(data.user);
+      setSuccessMessage('Login successful!');
+      
+      setTimeout(() => navigate('/welcome'), 1000);
+
+    } else {
+      // --- REGISTRATION API CALL ---
+      const response = await fetch('http://localhost:3001/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, username, password }),
+      });
+      
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed.');
+      }
+      
+      setSuccessMessage('Account created successfully! Please login.');
+      
+      setTimeout(() => {
+        setIsLogin(true);
+        setIdentifier(username); // Pre-fill username for convenience
+        setPassword('');
+        setSuccessMessage(''); // Clear success message
+      }, 2000);
     }
-  };
+  } catch (error) {
+    setErrors({ general: error.message });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
